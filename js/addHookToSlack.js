@@ -1,15 +1,16 @@
+import isTypingAWhiteListedChannel from './canChangeChannelUtil.js';
+
 export default (function () {
 
     'use strict';
 
     let zGbl_PageChangedByAJAX_Timer = '';
-    let whiteListedChannels = [];
-    let lastRuleBreak = new Date();
+    let lastRuleBreak;
     let jumpToChannelBlocked = false;
 
-    function startApp(whiteList) {
-        console.log('***Slack Productivity Starting with whitelist', whiteList);
-        whiteListedChannels = whiteList;
+    function startApp(lastRelapse) {
+        console.log('***Slack Productivity Starting');
+        lastRuleBreak = lastRelapse;
         window.addEventListener ('load', localMain, false);
     }
 
@@ -63,7 +64,7 @@ export default (function () {
 
     function addJumpToChannelBlocker() {
         if (!jumpToChannelBlocked) {
-            const jumpToInput = document.querySelector('[data-qa="jumper_input"]');
+            const jumpToInput = document.querySelector('[data-qa=\'jumper_input\']');
 
             jumpToInput.addEventListener('keydown', function (e) {
                 const ENTER_KEY = 13;
@@ -91,19 +92,15 @@ export default (function () {
     function showWhitelistedChannelWarning(channelTheUserIsTyping) {
         let warningNode = document.querySelector('#slackProductivityWarningNode');
 
-        if (isTypingAWhiteListedChannel(channelTheUserIsTyping)) {
-            warningNode.innerText = 'Right on - I\'m happy for you to visit that channel';
-            warningNode.style.backgroundColor = 'green';
-        } else {
-            warningNode.innerText = 'Hey buddy I\'m watching you! I don\'t like the look of that channel at all. I thought you were meant to be working.';
-            warningNode.style.backgroundColor = 'red';
-        }
-    }
-
-    function isTypingAWhiteListedChannel(channelTheUserIsTyping) {
-        return whiteListedChannels.reduce(function (previous, whiteListedChannel) {
-           return channelTheUserIsTyping.length >= (whiteListedChannel.length / 2) &&
-            whiteListedChannel.indexOf(channelTheUserIsTyping) > -1; 
+        isTypingAWhiteListedChannel(channelTheUserIsTyping).then(function (isValidChannel) {
+            console.log('isValidChannel', isValidChannel);
+            if (isValidChannel) {
+                warningNode.innerText = 'Right on - I\'m happy for you to visit that channel';
+                warningNode.style.backgroundColor = 'green';
+            } else {
+                warningNode.innerText = 'Hey buddy I\'m watching you! I don\'t like the look of that channel at all. I thought you were meant to be working.';
+                warningNode.style.backgroundColor = 'red';
+            }
         });
     }
 
@@ -137,24 +134,45 @@ export default (function () {
     }
 
     function handleChannelChange(channelName, e) {
-        const isChannelWhitelisted = isTypingAWhiteListedChannel(channelName);
-
-        if (!isChannelWhitelisted) {
-            if (!confirmFirstTime()) {
-                cancelChannelOpen(e);
-            } else {
-                if (!confirmSecondTime()) {
-                    cancelChannelOpen(e);
-                } else {
-                    if (!confirmThirdTime()) {
-                        cancelChannelOpen(e); 
+        if (!e.useDefault) {
+            cancelChannelOpen(e);
+            isTypingAWhiteListedChannel(channelName).then(function (isValidChannel) {
+                if (!isValidChannel) {
+                    if (!confirmFirstTime()) {
+                        cancelChannelOpen(e);
                     } else {
-                        lastRuleBreak = new Date();
-                        youSuckAlert();
+                        if (!confirmSecondTime()) {
+                            cancelChannelOpen(e);
+                        } else {
+                            if (!confirmThirdTime()) {
+                                cancelChannelOpen(e); 
+                            } else {
+                                updateLastRelapseDate();
+                                youSuckAlert();
+                                allowChannelOpen(e, e.target);
+                            }
+                        }
                     }
+                } else {
+                    allowChannelOpen(e, e.target);
                 }
-            }
+            });
         }
+    }
+
+    function updateLastRelapseDate() {
+        lastRuleBreak = new Date();
+        chrome.storage.sync.set({
+            slackProductivityDateOfLastRelapse: lastRuleBreak
+        });
+    }
+
+    function allowChannelOpen(e, node) {
+        //Firing the regular action
+        var evt = document.createEvent('MouseEvents');
+        evt.initEvent(e.type, true, true);
+        evt['useDefault'] = true;
+        node.dispatchEvent(evt);
     }
 
     function confirmFirstTime() {
