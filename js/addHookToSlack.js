@@ -125,7 +125,22 @@ export default (function () {
             channel.remove();
             
             wrapperDiv.querySelector('a').addEventListener('click', handleChannelClick);
+            wrapperDiv.querySelector('a').addEventListener('mouseenter', handleChannelMouseEnter);
+            wrapperDiv.querySelector('a').addEventListener('mouseleave', handleChannelMouseLeave);
         }
+    }
+
+    function handleChannelMouseEnter(e) {
+        const channelName = e.target.innerText.trim();
+        isTypingAWhiteListedChannel(channelName).then(function (isValidChannel) {
+            if (!isValidChannel) {
+                e.target.style.cursor = 'not-allowed';
+            }
+        });
+    }
+
+    function handleChannelMouseLeave(e) {
+        e.target.style.cursor = 'auto';
     }
 
     function handleChannelClick(e) {
