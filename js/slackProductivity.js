@@ -1,5 +1,4 @@
 import slackListener from './addHookToSlack.js';
-
 (function () {
 
     'use strict';
@@ -13,8 +12,13 @@ import slackListener from './addHookToSlack.js';
 
     function getTimeSinceLastRelapse() {
         let promise = new Promise(function (resolve, reject) { 
-            chrome.storage.sync.get('slackProductivityDateOfLastRelapse', function (whiteListFromStorage) {
-                resolve(whiteListFromStorage.slackProductivityDateOfLastRelapse || new Date());
+            chrome.storage.sync.get('slackProductivityDateOfLastRelapse', function (dataFromStorage) {
+                var lastRelapseDate = dataFromStorage.slackProductivityDateOfLastRelapse;
+
+                if (!(lastRelapseDate instanceof Date)) {
+                    lastRelapseDate = new Date();
+                }
+                resolve(lastRelapseDate);
             });
         });
         return promise;

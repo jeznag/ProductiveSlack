@@ -6,10 +6,9 @@ export default (function () {
 
     let zGbl_PageChangedByAJAX_Timer = '';
     let lastRuleBreak;
-    let jumpToChannelBlocked = false;
 
     function startApp(lastRelapse) {
-        console.log('***Slack Productivity Starting');
+        console.log('***Slack Productivity Starting', lastRelapse);
         lastRuleBreak = lastRelapse;
         window.addEventListener ('load', localMain, false);
     }
@@ -47,12 +46,11 @@ export default (function () {
         // select the target node
         const target = document.querySelector('ts-jumper');
         // create an observer instance
-        let observer = new MutationObserver(function(mutations) {
+        let observer = new MutationObserver(function() {
+            target.remove();
             if (!target.querySelector('#slackProductivityWarningNode')) {
                 target.appendChild(getWarningDiv());
             }
-
-            addJumpToChannelBlocker();
         });
          
         // configuration of the observer:
@@ -60,22 +58,6 @@ export default (function () {
          
         // pass in the target node, as well as the observer options
         observer.observe(target, config);
-    }
-
-    function addJumpToChannelBlocker() {
-        if (!jumpToChannelBlocked) {
-            const jumpToInput = document.querySelector('[data-qa=\'jumper_input\']');
-
-            jumpToInput.addEventListener('keydown', function (e) {
-                const ENTER_KEY = 13;
-                if (e.keyCode === ENTER_KEY) {
-                    handleChannelChange(jumpToInput.value, e);
-                } else {
-                    showWhitelistedChannelWarning(jumpToInput.value);
-                }
-            });
-            jumpToChannelBlocked = true;
-        }
     }
 
     function getWarningDiv(){
@@ -87,21 +69,6 @@ export default (function () {
         warningNode.id = 'slackProductivityWarningNode';
         warningNode.innerText = 'Hey buddy I\'m watching you! I thought you were meant to be working;)';
         return warningNode;
-    }
-
-    function showWhitelistedChannelWarning(channelTheUserIsTyping) {
-        let warningNode = document.querySelector('#slackProductivityWarningNode');
-
-        isTypingAWhiteListedChannel(channelTheUserIsTyping).then(function (isValidChannel) {
-            console.log('isValidChannel', isValidChannel);
-            if (isValidChannel) {
-                warningNode.innerText = 'Right on - I\'m happy for you to visit that channel';
-                warningNode.style.backgroundColor = 'green';
-            } else {
-                warningNode.innerText = 'Hey buddy I\'m watching you! I don\'t like the look of that channel at all. I thought you were meant to be working.';
-                warningNode.style.backgroundColor = 'red';
-            }
-        });
     }
 
     function hideSlackChannels() {
@@ -192,12 +159,15 @@ export default (function () {
 
     function confirmFirstTime() {
         const minutesSinceLastRuleBreak = ((new Date() - lastRuleBreak) / 1000 / 60).toFixed(2);
-
-        return window.confirm(
+        let originalTextToContinue = 'I want to destroy my productivity and engage in pointless arguments';
+        let textToContinue = originalTextToContinue.split(' ').reverse().join(' ');
+        let response = window.prompt(
 `OY! Are you sure you want to get out of flow?
 You\'ve been good for ${minutesSinceLastRuleBreak} minutes.
 Are you sure you want to become significantly less awesome?
-Press cancel to back out now.`);
+Type this text backwards if you do '${textToContinue}'`);
+
+        return response === originalTextToContinue;
     }
 
     function confirmSecondTime() {
